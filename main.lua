@@ -122,13 +122,96 @@ function love.load()
     starfield.init()
     bullets = {}
     particles = {}
-    aliens = {}
+    boids = {}
 
-    Alien = new_alien_base(64, 32)
-    Alien:init()
-    table.insert(aliens, Alien)
+    for i = 1, 16, 1 do
+        local alien = new_alien_base(math.random(0, screen_width), math.random(0, screen_height))
+        alien:init()
+        table.insert(boids, alien)
+    end
 
     set_callbacks()
+end
+
+function run_boids()
+    for i, boid in ipairs(boids) do
+        local force = {x = 0, y = 0}
+
+        local vc = cohesion(boid, i)
+        local vs = separation(boid, i)
+        local va = alignment(boid, i)
+
+        local rv = {x = 0, y = 0}
+        if va and vs and vc then
+            rv.x = va.x + vs.x + vc.x
+            rv.y = va.y + vs.y + vc.y
+        end
+
+        boid.velocity.x = boid.velocity.x + rv.x
+        boid.velocity.y = boid.velocity.y + rv.y
+
+        --limit speed
+        local speed_limit = 0.5
+        local speed = math.sqrt(boid.velocity.x^2 + boid.velocity.y^2)
+        if speed > speed_limit then
+            boid.velocity.x = (boid.velocity.x / speed) * speed_limit
+            boid.velocity.y = (boid.velocity.y / speed) * speed_limit
+        end
+
+        boid.position.x = boid.position.x + boid.velocity.x
+        boid.position.y = boid.position.y + boid.velocity.y
+    end
+end
+
+function cohesion(boid_i, i)
+    local center = { x = 0, y = 0 }
+    for j, boid_j in ipairs(boids) do
+        if j ~= i then
+            center.x = center.x + boid_j.position.x
+            center.y = center.y + boid_j.position.y
+        end
+    end
+
+    center.x = center.x / #boids
+    center.y = center.y / #boids
+
+    local factor = 200
+    return {x = (center.x - boid_i.position.x) / factor, y = (center.y - boid_i.position.y) / factor}
+end
+
+function separation(boid_i, i)
+    local c = { x = 0, y = 0} -- what the fuck is c
+    local min_distance = 10
+
+    for j, boid_j in ipairs(boids) do
+        if  j ~= i then
+            local diff = {x = boid_i.position.x - boid_j.position.x, y = boid_i.position.y - boid_j.position.y}
+            local magnitude = math.sqrt((math.pow(diff.x, 2) + math.pow(diff.y, 2)))
+            if magnitude < min_distance and magnitude > 0 then
+                c.x = c.x + diff.x
+                c.y = c.y + diff.y
+            end
+        end
+    end
+
+    return c
+end
+
+function alignment(boid_i, i)
+    local pvi = {x = 0, y = 0} -- perceived velocity of boid i
+
+    for j, boid_j in ipairs(boids) do
+        if j ~= i then
+            pvi.x = pvi.x + boid_j.velocity.x
+            pvi.y = pvi.y + boid_j.velocity.y
+        end
+    end
+
+    pvi.x = pvi.x / #boids
+    pvi.y = pvi.y / #boids
+
+    local factor = 8
+    return {x = (pvi.x - boid_i.velocity.x) / factor, y = (pvi.y - boid_i.velocity.y) / factor} 
 end
 
 function love.update()
@@ -149,8 +232,10 @@ function love.update()
         end
     end
 
-    for i = #aliens, 1, -1 do
-        aliens[i]:update()
+    run_boids()
+
+    for i = #boids, 1, -1 do
+        boids[i]:update()
     end
 end
 
@@ -169,8 +254,8 @@ function draw_foreground()
 
     Player:draw()
 
-    for i = #aliens, 1, -1 do
-        aliens[i]:draw()
+    for i = #boids, 1, -1 do
+        boids[i]:draw()
     end
 end
 

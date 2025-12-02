@@ -56,19 +56,21 @@ function utils.load_multiple_sprites(names)
 end
 
 function utils.screen_wrap(object)
-    local half_sw = object.sprite.getWidth(object.sprite) / 2
-    local half_sh = object.sprite.getHeight(object.sprite) / 2
+    if object.sprite_index and object.position then
+        local half_sw = object.sprite_index.getWidth(object.sprite_index) / 2
+        local half_sh = object.sprite_index.getHeight(object.sprite_index) / 2
 
-    if object.x + half_sw < 0 then
-        object.x = screen_width + half_sw
-    elseif object.x - half_sw > screen_width then
-        object.x = -half_sw
-    end
+        if object.position.x + half_sw < 0 then
+            object.position.x = screen_width + half_sw
+        elseif object.position.x - half_sw > screen_width then
+            object.position.x = -half_sw
+        end
 
-    if object.y + half_sh < 0 then
-        object.y = screen_height + half_sh
-    elseif object.y - half_sh > screen_height then
-        object.y = -half_sh
+        if object.position.y + half_sh < 0 then
+            object.position.y = screen_height + half_sh
+        elseif object.position.y - half_sh > screen_height then
+            object.position.y = -half_sh
+        end
     end
 end
 
