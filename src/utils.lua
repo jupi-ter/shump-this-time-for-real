@@ -5,7 +5,12 @@ hc = require("HC")
 utils.object_types = {
     PLAYER = "player",
     BULLET = "bullet",
-    ASTEROID = "asteroid"
+    ALIEN = "alien",
+}
+
+utils.alien_subtypes = {
+    BASE = "alien_base",
+    FIGURE_EIGHT = "alien_figure_eight",
 }
 
 utils.colors = {
@@ -25,6 +30,18 @@ utils.colors = {
     LAVENDER = {0.514, 0.463, 0.612},
     PINK = {1.0, 0.467, 0.659},
     LIGHTPEACH = {1.0, 0.8, 0.667}
+}
+
+-- Color modes
+utils.MODE_FADE = "fade"      -- Cycle through color palette based on lifetime
+utils.MODE_SINGLE = "single"  -- Single color throughout lifetime
+
+-- Default color palettes
+utils.PALETTE_DEFAULT = {
+    utils.colors.DARKGREY,
+    utils.colors.ORANGE,
+    utils.colors.YELLOW,
+    utils.colors.WHITE
 }
 --
 
@@ -75,37 +92,37 @@ function utils.screen_wrap(object)
 end
 
 function utils.check_all_collisions()
-    --[[ check player vs asteroids
+    --check player vs aliens
     if Player:is_alive() and not Player.is_invulnerable then
         for shape, delta in pairs(hc.collisions(Player.bbox)) do
-            if shape.owner and shape.owner.type == utils.object_types.ASTEROID then
+            if shape.owner and shape.owner.supertype == utils.object_types.ALIEN then
                 Player:die()
                 break
             end
         end
-    end--]]
+    end
 
-    --[[ check bullets vs asteroids
+    --check bullets vs aliens
     for i = #bullets, 1, -1 do
-        if not bullets[i].flag_for_deletion then  -- skip if already deleted
+        if not bullets[i].flag_for_deletion then
             for shape, delta in pairs(hc.collisions(bullets[i].bbox)) do
-                if shape.owner and shape.owner.type == utils.object_types.ASTEROID then
+                if shape.owner and shape.owner.supertype == utils.object_types.ALIEN then
                     -- destroy bullet
                     bullets[i].flag_for_deletion = true
-                    
+
                     --remove from collision system
                     if bullets[i].bbox then
                         hc.remove(bullets[i].bbox)
                         bullets[i].bbox = nil
                     end
-                    
-                    -- damage asteroid
+
+                    -- damage alien
                     shape.owner:take_damage()
-                    break  -- Bullet can only hit once
+                    break
                 end
             end
         end
-    end--]]
+    end
 end
 
 function utils.play_sound(sound)

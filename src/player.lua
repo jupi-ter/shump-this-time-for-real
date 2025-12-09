@@ -99,7 +99,9 @@ function player.new_player(x, y)
         end
 
         -- screen clamping
-
+        local half_size = 4
+        self.x = math.max(half_size, math.min(screen_width - half_size, self.x))
+        self.y = math.max(half_size, math.min(screen_height - half_size, self.y))
     end
 
     function p:draw()

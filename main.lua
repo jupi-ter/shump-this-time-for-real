@@ -4,11 +4,13 @@ bullet = require("src.bullet")
 starfield = require("src.starfield")
 particle = require("src.particle")
 alien_base = require("src.alien_base")
+alien_figure_eight = require("src.alien_figure_eight")
 
 -- globals
-screen_width, screen_height = 128, 128
+screen_width, screen_height = 128, 128 
 lives = 3
 debug_draw = false
+screenshake = 0
 
 function love.run()
     if love.load then love.load(love.arg.parseGameArguments(arg), arg) end
@@ -95,20 +97,20 @@ end
 
 function load_sprites()
     player_sprite = utils.load_sprite("ship")
-    bullet_sprite = utils.load_sprite("bullet_2")
-
+    bullet_sprites = utils.load_multiple_sprites({"bullet_1", "bullet_2"})
     green_guy_sprites = utils.load_multiple_sprites({"green_guy_1", "green_guy_2"})
 end
 
 function set_callbacks()
-    Player.on_shoot = function(x, y, rot) 
+    Player.on_shoot = function(x, y, rot)
+        screenshake = screenshake + 2
         local new_bullet = bullet.new_bullet(x, y, rot)
         table.insert(bullets, new_bullet)
         new_bullet:init()
     end
 
     Player.on_move = function(x, y)
-        create_particle(x, y)
+        create_particle(x, y, {})
     end
 end
 
@@ -122,100 +124,39 @@ function love.load()
     starfield.init()
     bullets = {}
     particles = {}
-    boids = {}
+    aliens = {}
 
-    for i = 1, 16, 1 do
-        local alien = new_alien_base(math.random(0, screen_width), math.random(0, screen_height))
+    -- Spawn figure-8 aliens at different positions
+    for i = 1, 4, 1 do
+        local center_x = 32 + (i - 1) * 24
+        local center_y = 40 + math.random(-10, 10)
+        local alien = new_alien_figure_eight(center_x, center_y, 20, 15, 0.8 + math.random() * 0.8)
+        alien:set_erratic(2 + math.random() * 3, 3 + math.random(0, 5))
         alien:init()
-        table.insert(boids, alien)
+        alien.particle_on_move = function(x, y, options)
+            create_particle(x, y, options)
+        end
+        alien.particle_on_death = function(x,y)
+            create_explosion(x,y)
+        end
+        table.insert(aliens, alien)
     end
 
     set_callbacks()
 end
 
-function run_boids()
-    for i, boid in ipairs(boids) do
-        local force = {x = 0, y = 0}
-
-        local vc = cohesion(boid, i)
-        local vs = separation(boid, i)
-        local va = alignment(boid, i)
-
-        local rv = {x = 0, y = 0}
-        if va and vs and vc then
-            rv.x = va.x + vs.x + vc.x
-            rv.y = va.y + vs.y + vc.y
-        end
-
-        boid.velocity.x = boid.velocity.x + rv.x
-        boid.velocity.y = boid.velocity.y + rv.y
-
-        --limit speed
-        local speed_limit = 0.5
-        local speed = math.sqrt(boid.velocity.x^2 + boid.velocity.y^2)
-        if speed > speed_limit then
-            boid.velocity.x = (boid.velocity.x / speed) * speed_limit
-            boid.velocity.y = (boid.velocity.y / speed) * speed_limit
-        end
-
-        boid.position.x = boid.position.x + boid.velocity.x
-        boid.position.y = boid.position.y + boid.velocity.y
-    end
-end
-
-function cohesion(boid_i, i)
-    local center = { x = 0, y = 0 }
-    for j, boid_j in ipairs(boids) do
-        if j ~= i then
-            center.x = center.x + boid_j.position.x
-            center.y = center.y + boid_j.position.y
-        end
-    end
-
-    center.x = center.x / #boids
-    center.y = center.y / #boids
-
-    local factor = 200
-    return {x = (center.x - boid_i.position.x) / factor, y = (center.y - boid_i.position.y) / factor}
-end
-
-function separation(boid_i, i)
-    local c = { x = 0, y = 0} -- what the fuck is c
-    local min_distance = 10
-
-    for j, boid_j in ipairs(boids) do
-        if  j ~= i then
-            local diff = {x = boid_i.position.x - boid_j.position.x, y = boid_i.position.y - boid_j.position.y}
-            local magnitude = math.sqrt((math.pow(diff.x, 2) + math.pow(diff.y, 2)))
-            if magnitude < min_distance and magnitude > 0 then
-                c.x = c.x + diff.x
-                c.y = c.y + diff.y
-            end
-        end
-    end
-
-    return c
-end
-
-function alignment(boid_i, i)
-    local pvi = {x = 0, y = 0} -- perceived velocity of boid i
-
-    for j, boid_j in ipairs(boids) do
-        if j ~= i then
-            pvi.x = pvi.x + boid_j.velocity.x
-            pvi.y = pvi.y + boid_j.velocity.y
-        end
-    end
-
-    pvi.x = pvi.x / #boids
-    pvi.y = pvi.y / #boids
-
-    local factor = 8
-    return {x = (pvi.x - boid_i.velocity.x) / factor, y = (pvi.y - boid_i.velocity.y) / factor} 
-end
-
 function love.update()
     starfield.update()
+
+    if screenshake > 10 then
+        screenshake = screenshake * 0.8 
+    end
+
+    if screenshake > 0 then
+        screenshake = screenshake - 1
+    else
+        screenshake = 0
+    end
 
     for i = #particles, 1, -1 do
         particles[i]:update()
@@ -232,11 +173,17 @@ function love.update()
         end
     end
 
-    run_boids()
+    for i = #aliens, 1, -1 do
+        local a = aliens[i]
 
-    for i = #boids, 1, -1 do
-        boids[i]:update()
+        if (a.flag_for_deletion) then
+            table.remove(aliens, i)
+        else
+            a:update()
+        end
     end
+
+    utils.check_all_collisions()
 end
 
 function draw_background()
@@ -254,8 +201,8 @@ function draw_foreground()
 
     Player:draw()
 
-    for i = #boids, 1, -1 do
-        boids[i]:draw()
+    for i = #aliens, 1, -1 do
+        aliens[i]:draw()
     end
 end
 
@@ -275,7 +222,10 @@ function love.draw()
     local offset_x = (win_w/scale - screen_width) / 2
     local offset_y = (win_h/scale - screen_height) / 2
 
-    love.graphics.translate(offset_x, offset_y)
+    local shakeX = (love.math.random() * screenshake) - screenshake / 2
+    local shakeY = (love.math.random() * screenshake) - screenshake / 2
+    
+    love.graphics.translate(offset_x + shakeX, offset_y + shakeY)
 
     draw_background()
     draw_foreground()
@@ -284,8 +234,22 @@ function love.draw()
     love.graphics.pop()
 end
 
-function create_particle(x, y)
-    local new_part = particle.new_particle(x, y, false)
+function create_particle(x, y, options)
+    local new_part = particle.new_particle(x, y, options)
     new_part:init()
     table.insert(particles, new_part)
+end
+
+function create_explosion(x, y)
+    screenshake = screenshake + 4
+    --utils.play_sound(boom_sfx)
+
+    for i = 1, 20, 1 do
+        create_particle(x, y, {
+            use_force = true,
+            speed_x = love.math.random() * 2 - 1,
+            speed_y = love.math.random() * 2 - 1,
+            radius = love.math.random(1, 4)
+        })
+    end
 end
