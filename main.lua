@@ -103,7 +103,15 @@ end
 
 function set_callbacks()
     Player.on_shoot = function(x, y, rot)
-        screenshake = screenshake + 2
+        --screenshake = screenshake + 2
+        create_explosion(x, y-8, {
+            color_mode = utils.MODE_SINGLE,
+            single_color = utils.colors.LIGHTGREY,
+            amount = 3,
+            shake = 2,
+            lifetime = 1,
+            radius = 2
+        })
         local new_bullet = bullet.new_bullet(x, y, rot)
         table.insert(bullets, new_bullet)
         new_bullet:init()
@@ -159,7 +167,12 @@ function love.update()
     end
 
     for i = #particles, 1, -1 do
-        particles[i]:update()
+        local p = particles[i]
+        if (p.flag_for_deletion) then
+            table.remove(particles, i)
+        else
+            p:update()
+        end
     end
 
     Player:update()
@@ -240,16 +253,25 @@ function create_particle(x, y, options)
     table.insert(particles, new_part)
 end
 
-function create_explosion(x, y)
-    screenshake = screenshake + 4
-    --utils.play_sound(boom_sfx)
+function create_explosion(x, y, explosion_options)
+    explosion_options = explosion_options or {}
 
-    for i = 1, 20, 1 do
+    local amount = explosion_options.amount or 20
+    local shake = explosion_options.shake or 4
+
+    screenshake = screenshake + shake
+    --utils.play_sound(boom_sfx)
+    
+    for i = 1, amount, 1 do
         create_particle(x, y, {
             use_force = true,
             speed_x = love.math.random() * 2 - 1,
             speed_y = love.math.random() * 2 - 1,
-            radius = love.math.random(1, 4)
+            radius = explosion_options.radius or love.math.random(1, 4),
+            lifetime = explosion_options.lifetime or 5,
+            color_mode = explosion_options.color_mode or utils.MODE_FADE,
+            possible_colors = explosion_options.colors or utils.PALETTE_DEFAULT,
+            single_color = explosion_options.single_color or utils.colors.WHITE
         })
     end
 end
