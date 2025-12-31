@@ -112,9 +112,8 @@ function set_callbacks()
             lifetime = 1,
             radius = 2
         })
-        local new_bullet = bullet.new_bullet(x, y, rot)
+        local new_bullet = bullet(x, y, rot)
         table.insert(bullets, new_bullet)
-        new_bullet:init()
     end
 
     Player.on_move = function(x, y)
@@ -126,8 +125,7 @@ function love.load()
     window_setup()
     load_sprites()
 
-    Player = player.new_player(screen_width/2, screen_height/2)
-    Player:init()
+    Player = player(screen_width/2, screen_height/2)
 
     starfield.init()
     bullets = {}
@@ -138,9 +136,8 @@ function love.load()
     for i = 1, 4, 1 do
         local center_x = 32 + (i - 1) * 24
         local center_y = 40 + math.random(-10, 10)
-        local alien = new_alien_figure_eight(center_x, center_y, 20, 15, 0.8 + math.random() * 0.8)
+        local alien = alien_figure_eight(center_x, center_y, 20, 15, 0.8 + math.random() * 0.8)
         alien:set_erratic(2 + math.random() * 3, 3 + math.random(0, 5))
-        alien:init()
         alien.particle_on_move = function(x, y, options)
             create_particle(x, y, options)
         end
@@ -248,8 +245,7 @@ function love.draw()
 end
 
 function create_particle(x, y, options)
-    local new_part = particle.new_particle(x, y, options)
-    new_part:init()
+    local new_part = particle(x, y, options)
     table.insert(particles, new_part)
 end
 

@@ -1,41 +1,35 @@
-utils = require("src.utils")
-shaders = require("src.shaders")
+local Class = require("src.class")
+local utils = require("src.utils")
+local shaders = require("src.shaders")
 
-alien_base = {}
-alien_base.__index = alien_base
+local AlienBase = Class:extend("AlienBase")
 
-function new_alien_base(x, y)
-    local ab = setmetatable(
-    {
-        position = {x = x, y = y},
-        velocity = {x = 0, y = 0},
-        xscale = 1,
-        yscale = 1,
-        rotation_deg = 0,
-        anim_counter = 0,
-        animation_speed = 0.05,
-        animation_index = 1,
-        animation_frames = {},
-        xspd = 0,
-        yspd = 0.5,
-        bbox = hc.rectangle(0, 0, 8, 8),
-        supertype = utils.object_types.ALIEN,
-        subtype = utils.alien_subtypes.BASE,
-        hp = 1,
-        flag_for_deletion = false,
-        flash_timer = 0,
-        score_yield = 10
-    }, alien_base)
-    return ab
-end
+function AlienBase:init(x, y)
+    self.position = {x = x, y = y}
+    self.velocity = {x = 0, y = 0}
+    self.xscale = 1
+    self.yscale = 1
+    self.rotation_deg = 0
+    self.anim_counter = 0
+    self.animation_speed = 0.05
+    self.animation_index = 1
+    self.animation_frames = {}
+    self.xspd = 0
+    self.yspd = 0.5
+    self.bbox = hc.rectangle(0, 0, 8, 8)
+    self.supertype = utils.object_types.ALIEN
+    self.subtype = utils.alien_subtypes.BASE
+    self.hp = 1
+    self.flag_for_deletion = false
+    self.flash_timer = 0
+    self.score_yield = 10
 
-function alien_base:init()
     -- set animation frames
     self.animation_frames = green_guy_sprites
     self.bbox.owner = self
 end
 
-function alien_base:update()
+function AlienBase:update()
     self.anim_counter = self.anim_counter + self.animation_speed
 
     if (self.anim_counter > #self.animation_frames) then
@@ -57,11 +51,11 @@ function alien_base:update()
     utils.screen_wrap(self)
 end
 
-function alien_base:draw()
+function AlienBase:draw()
     if self.sprite_index then
         if self.flash_timer > 0 then
             love.graphics.setShader(shaders.white_flash)
-        else 
+        else
             love.graphics.setShader()
         end
         utils.draw_sprite(self.sprite_index, self.position.x, self.position.y, math.rad(self.rotation_deg), self.xscale, self.yscale, true)
@@ -73,7 +67,7 @@ function alien_base:draw()
     end
 end
 
-function alien_base:take_damage(amount)
+function AlienBase:take_damage(amount)
     amount = amount or 1
     self.hp = self.hp - amount
     self.flash_timer = 5
@@ -84,7 +78,7 @@ function alien_base:take_damage(amount)
     end
 end
 
-function alien_base:destroy()
+function AlienBase:destroy()
     if self.bbox ~= nil then
         hc.remove(self.bbox)
         self.bbox = nil
@@ -94,4 +88,4 @@ function alien_base:destroy()
     end
 end
 
-return alien_base
+return AlienBase
